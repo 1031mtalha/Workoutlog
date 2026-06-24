@@ -132,12 +132,16 @@ const shiftBtn = { flex: 1, background: SURF, border: `1px solid ${BORDER}`, bor
 /* ─────────────────────────  WEEK  ───────────────────────── */
 export function WeekTab({ cycleArr, getEffectiveSlot, tk, slotIndexForDate, openWeek, setOpenWeek, EX, TTYPE, Tag, ADDON_INFO, pickDifferentDay, shiftCycle }) {
   const todayIdx = slotIndexForDate(tk);
-  const upcoming = Array.from({ length: cycleArr.length }, (_, i) => {
-    const date = i === 0 ? tk : new Date(new Date(tk + "T12:00:00").setDate(new Date(tk + "T12:00:00").getDate() + i)).toISOString().split("T")[0];
+  const todayD = new Date(tk + "T12:00:00");
+  const mondayOffset = (todayD.getDay() + 6) % 7; // 0=Mon
+  const monday = new Date(todayD); monday.setDate(todayD.getDate() - mondayOffset);
+  const upcoming = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday); d.setDate(monday.getDate() + i);
+    const date = d.toISOString().split("T")[0];
     return { date, idx: slotIndexForDate(date) };
   });
   return (<>
-    <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.55, padding: "2px 2px 4px" }}>Rolling cycle, not weekday-locked. The next {cycleArr.length} slots from today's real calendar dates — tap to view, or pick "I did a different day" if today didn't match the plan.</div>
+    <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.55, padding: "2px 2px 4px" }}>This week, Monday through Sunday. The rolling cycle isn't weekday-locked, so shifting it moves which workout falls on which day — tap a day to view, or pick "I did a different day" if today didn't match the plan.</div>
     <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
       <button onClick={() => shiftCycle(-1)} style={shiftBtn}>‹ Shift back</button>
       <button onClick={() => shiftCycle(1)} style={shiftBtn}>Shift forward ›</button>
@@ -437,7 +441,7 @@ export function FuelTab({ DateNav, Card, Eyebrow, Bar, food, tgt, showFood, setS
   </>);
 }
 
-/* ───────────────────────── TRACK (monthly consistency) ───────────────────────── */
+/* ─────────────────────────  TRACK (monthly consistency)  ───────────────────────── */
 export function TrackTab({ Card, Eyebrow, trackMonth, setTrackMonth, monthCells, DAY_STATUS, setSelDate, setTab }) {
   const [y, m] = trackMonth.split("-").map(Number);
   const days = new Date(y, m, 0).getDate();
