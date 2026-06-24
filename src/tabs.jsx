@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  BG, SURF, CARD, BORDER, RED, ORANGE, GREEN, BLUE, PURPLE, TEXT, MUTED, DIM,
+  BG, SURF, CARD, CARD2, BORDER, RED, ORANGE, GREEN, BLUE, PURPLE, TEXT, MUTED, DIM,
 } from "./data";
 import { exportAll } from "./storage";
 
