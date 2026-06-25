@@ -59,6 +59,28 @@ export default function App() {
   const [selDate, setSelDate] = useState(tk); // date being viewed/edited on Log & Fuel
   const gr = greeting();
 
+  /* roll selDate forward when the calendar day changes under an open app/PWA —
+     otherwise rehab/sleep/etc. keep pointing at yesterday's saved data until a manual reload */
+  const tkRef = useRef(tk);
+  useEffect(() => {
+    const checkDayRollover = () => {
+      const now = todayKey();
+      if (now !== tkRef.current) {
+        const prev = tkRef.current;
+        tkRef.current = now;
+        setSelDate(d => (d === prev ? now : d));
+      }
+    };
+    const id = setInterval(checkDayRollover, 60000);
+    document.addEventListener("visibilitychange", checkDayRollover);
+    window.addEventListener("focus", checkDayRollover);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", checkDayRollover);
+      window.removeEventListener("focus", checkDayRollover);
+    };
+  }, []);
+
   /* ── settings / config state ── */
   const [phase, setPhase] = useState(1);
   const [tgt, setTgt] = useState(TGT_DEFAULT);
