@@ -146,7 +146,10 @@ const QURAN = [
 ];
 
 /* ─────────────────────────  HELPERS  ───────────────────────── */
-const todayKey = () => new Date().toISOString().split("T")[0];
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+};
 const dayOfYear = () => { const n=new Date(); const s=new Date(n.getFullYear(),0,0); return Math.floor((n-s)/86400000); };
 const fmt = (k) => new Date(k+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"});
 const fmtW = (k) => new Date(k+"T12:00:00").toLocaleDateString("en-US",{weekday:"short"});
@@ -185,16 +188,61 @@ const slist = async (prefix) => {
   } catch { return []; }
 };
 
-function coachTarget(exId, hist) {
+// Predicts the next set's reps/weight from history — powers both the
+// "Next Target" text and the pre-filled log inputs, so the user usually
+// just taps instead of retyping numbers they already told the app.
+function predictNext(exId, hist) {
   const e = EX[exId]; if (!e) return null;
-  if (!hist.length) return e.mode==="time" ? `Start at ${e.lo}s` : `Start at ${e.lo} reps`;
+  if (!hist.length) return { reps:e.lo, wt: e.mode==="load" ? "" : "BW" };
   const last = hist[hist.length-1];
   const reps = parseFloat(last.reps)||0;
-  if (e.mode==="time") { const t=parseFloat(last.reps)||0; return `Beat ${t}s`; }
-  if (e.mode==="bw") { if (reps>=e.hi) return `${reps+1} reps — push the ceiling`; return `${reps+1} reps (was ${reps})`; }
-  if (reps>=e.hi) return `Add weight, drop to ${e.lo} reps`;
-  return `${last.wt} × ${reps+1} reps`;
+  if (e.mode==="time") return { reps, wt:"" };
+  if (e.mode==="bw") return { reps:reps+1, wt:last.wt||"BW" };
+  if (reps>=e.hi) return { reps:e.lo, wt:last.wt };
+  return { reps:reps+1, wt:last.wt };
 }
+
+function coachTarget(exId, hist) {
+  const e = EX[exId]; if (!e) return null;
+  const p = predictNext(exId, hist);
+  if (!hist.length) return e.mode==="time" ? `Start at ${p.reps}s` : `Start at ${p.reps} reps`;
+  const last = hist[hist.length-1];
+  const reps = parseFloat(last.reps)||0;
+  if (e.mode==="time") return `Beat ${reps}s`;
+  if (e.mode==="bw") { if (reps>=e.hi) return `${p.reps} reps — push the ceiling`; return `${p.reps} reps (was ${reps})`; }
+  if (reps>=e.hi) return `Add weight, drop to ${p.reps} reps`;
+  return `${last.wt} × ${p.reps} reps`;
+}
+
+/* ── Shared UI primitives ── defined at module scope (not inside App) so
+   their identity is stable across renders. Defining these inside the
+   component would give React a "new" component type on every re-render,
+   forcing a full remount of anything inside them — which drops focus (and
+   the on-screen keyboard) from any input nested in a <Card> after every
+   keystroke.                                                              */
+const Card = ({children,style}) => <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,padding:16,...style}}>{children}</div>;
+const Eyebrow = ({children}) => <div style={{fontSize:10,letterSpacing:2,color:MUTED,textTransform:"uppercase",fontWeight:700}}>{children}</div>;
+const Tag = ({label,color}) => <span style={{fontSize:9,fontWeight:800,letterSpacing:1.5,color,background:color+"22",padding:"4px 9px",borderRadius:5}}>{label}</span>;
+const pct = (v,m)=>`${Math.min(100,Math.round((v/m)*100))}%`;
+const Bar = ({v,m,c}) => <div style={{height:4,background:BORDER,borderRadius:3,overflow:"hidden",marginTop:5}}><div style={{width:pct(v,m),height:"100%",background:c,borderRadius:3,transition:"width .4s"}}/></div>;
+const tfield = (props) => <input {...props} style={{background:SURF,border:`1px solid ${BORDER}`,borderRadius:9,padding:"11px 12px",color:TEXT,fontSize:14,outline:"none",fontFamily:"inherit",boxSizing:"border-box",width:"100%",...props.style}}/>;
+const BodyMap = ({mColor}) => (
+  <svg viewBox="0 0 200 300" style={{width:"100%",maxWidth:200,display:"block",margin:"0 auto"}}>
+    <circle cx="100" cy="24" r="15" fill="#2A2A32"/>
+    <rect x="92" y="37" width="16" height="11" rx="4" fill="#2A2A32"/>
+    <ellipse cx="66" cy="60" rx="17" ry="12" fill={mColor("shoulders")}/>
+    <ellipse cx="134" cy="60" rx="17" ry="12" fill={mColor("shoulders")}/>
+    <path d="M78 54 H122 Q128 54 128 68 Q128 86 100 88 Q72 86 72 68 Q72 54 78 54 Z" fill={mColor("chest")}/>
+    <path d="M82 90 H118 L114 136 Q100 146 86 136 Z" fill={mColor("core")}/>
+    <rect x="48" y="66" width="15" height="40" rx="7" fill={mColor("biceps")}/>
+    <rect x="137" y="66" width="15" height="40" rx="7" fill={mColor("biceps")}/>
+    <rect x="46" y="108" width="13" height="38" rx="6" fill={mColor("forearms")}/>
+    <rect x="141" y="108" width="13" height="38" rx="6" fill={mColor("forearms")}/>
+    <path d="M84 146 Q100 152 116 146 L114 222 H104 L100 160 L96 222 H86 Z" fill={mColor("legs")}/>
+    <rect x="88" y="224" width="9" height="52" rx="4" fill="#2A2A32"/>
+    <rect x="103" y="224" width="9" height="52" rx="4" fill="#2A2A32"/>
+  </svg>
+);
 
 /* ─────────────────────────  COMPONENT  ───────────────────────── */
 export default function App() {
@@ -217,11 +265,14 @@ export default function App() {
   const [flags, setFlags] = useState({});
   const [hist, setHist]   = useState([]);
   const [exHist, setExHist] = useState({});
+  const [customEx, setCustomEx] = useState({});
 
   const [openEx, setOpenEx] = useState(null);
   const [si, setSi] = useState({ reps:"", wt:"" });
   const [showFood, setShowFood] = useState(false);
   const [fi, setFi] = useState({ name:"", kcal:"", pro:"", fat:"", carb:"" });
+  const [showAddEx, setShowAddEx] = useState(false);
+  const [newExName, setNewExName] = useState("");
   const [prEdit, setPrEdit] = useState(null);
   const [prV, setPrV] = useState("");
   const [chartEx, setChartEx] = useState(null);
@@ -232,12 +283,12 @@ export default function App() {
   const flash = (m) => { setToast(m); setTimeout(()=>setToast(""),1800); };
 
   useEffect(() => { (async () => {
-    const [w,f,s,r,so,ad,p,fl] = await Promise.all([
+    const [w,f,s,r,so,ad,p,fl,cx] = await Promise.all([
       sg(`wl_${tk}`,{}), sg(`fd_${tk}`,{kcal:0,pro:0,fat:0,carb:0,items:[]}),
       sg(`sl_${tk}`,null), sg(`rh_${tk}`,{}), sg(`so_${tk}`,{}), sg(`ad_${tk}`,{}),
-      sg("prs_v3",{}), sg(`fg_${tk}`,{}),
+      sg("prs_v3",{}), sg(`fg_${tk}`,{}), sg(`cx_${tk}`,{}),
     ]);
-    setWlog(w); setFood(f); setSleep(s); setRhab(r); setSore(so); setAddons(ad); setPrs(p); setFlags(fl);
+    setWlog(w); setFood(f); setSleep(s); setRhab(r); setSore(so); setAddons(ad); setPrs(p); setFlags(fl); setCustomEx(cx);
     setReady(true);
   })(); }, []);
 
@@ -264,6 +315,10 @@ export default function App() {
     if (exs.length && !chartEx) setChartEx(exs.includes("pu_max")?"pu_max":exs[0]);
   }, [chartEx]);
 
+  // Loaded once on startup (not just when the Stats tab is opened) so the
+  // "Next Target" prediction has real history to work with from the first
+  // visit to the Log tab, not just after a trip through Stats.
+  useEffect(() => { if (ready) loadHistory(); }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (tab==="stats" && ready) loadHistory(); }, [tab, ready, loadHistory]);
 
   const saveWlog  = async v => { setWlog(v);  await ss(`wl_${tk}`,v); };
@@ -274,13 +329,39 @@ export default function App() {
   const saveAddon = async v => { setAddons(v);await ss(`ad_${tk}`,v); };
   const savePrs   = async v => { setPrs(v);   await ss("prs_v3",v); };
   const saveFlags = async v => { setFlags(v); await ss(`fg_${tk}`,v); };
+  const saveCustomEx = async v => { setCustomEx(v); await ss(`cx_${tk}`,v); };
+
+  // Combines saved history with any sets already logged today, so the
+  // predicted next target accounts for the set you just did.
+  const histFor = (exId, wlogSnapshot) => (exHist[exId]||[]).map(h=>({reps:h.reps,wt:h.wt})).concat((wlogSnapshot[exId]||[]).map(s=>({reps:s.reps,wt:s.wt})));
+
+  const openExercise = (id) => {
+    if (openEx===id) { setOpenEx(null); setSi({ reps:"", wt:"" }); return; }
+    setOpenEx(id);
+    const p = EX[id] ? predictNext(id, histFor(id, wlog)) : null;
+    setSi(p ? { reps:String(p.reps), wt:String(p.wt ?? "") } : { reps:"", wt:"" });
+  };
 
   const addSet = async () => {
     if (!si.reps || !openEx) return;
-    await saveWlog({ ...wlog, [openEx]: [...(wlog[openEx]||[]), { reps:si.reps, wt:si.wt||"BW" }] });
-    setSi({ reps:"", wt:"" }); flash("Set logged");
+    const nextWlog = { ...wlog, [openEx]: [...(wlog[openEx]||[]), { reps:si.reps, wt:si.wt||"BW" }] };
+    await saveWlog(nextWlog);
+    const p = EX[openEx] ? predictNext(openEx, histFor(openEx, nextWlog)) : null;
+    setSi(p ? { reps:String(p.reps), wt:String(p.wt ?? "") } : { reps:"", wt:"" });
+    flash("Set logged");
   };
   const delSet = async (exId, i) => { const arr=[...(wlog[exId]||[])]; arr.splice(i,1); await saveWlog({...wlog,[exId]:arr}); };
+  const addCustomEx = async () => {
+    const name = newExName.trim(); if (!name) return;
+    const id = `custom_${Date.now()}`;
+    await saveCustomEx({ ...customEx, [id]: { name } });
+    setNewExName(""); setShowAddEx(false); flash("Exercise added");
+  };
+  const delCustomEx = async (id) => {
+    const cx = { ...customEx }; delete cx[id]; await saveCustomEx(cx);
+    const wl = { ...wlog }; delete wl[id]; await saveWlog(wl);
+    if (openEx===id) { setOpenEx(null); setSi({ reps:"", wt:"" }); }
+  };
   const addFood = async () => {
     if (!fi.name) return;
     const it = { name:fi.name, kcal:+fi.kcal||0, pro:+fi.pro||0, fat:+fi.fat||0, carb:+fi.carb||0 };
@@ -300,33 +381,9 @@ export default function App() {
   const rehabDone = REHAB.filter(r=>rhab[r.id]).length;
   const loggedCount = plan.main.filter(id=>(wlog[id]||[]).length>0).length;
 
-  const Card = ({children,style}) => <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,padding:16,...style}}>{children}</div>;
-  const Eyebrow = ({children}) => <div style={{fontSize:10,letterSpacing:2,color:MUTED,textTransform:"uppercase",fontWeight:700}}>{children}</div>;
-  const Tag = ({label,color}) => <span style={{fontSize:9,fontWeight:800,letterSpacing:1.5,color,background:color+"22",padding:"4px 9px",borderRadius:5}}>{label}</span>;
-  const pct = (v,m)=>`${Math.min(100,Math.round((v/m)*100))}%`;
-  const Bar = ({v,m,c}) => <div style={{height:4,background:BORDER,borderRadius:3,overflow:"hidden",marginTop:5}}><div style={{width:pct(v,m),height:"100%",background:c,borderRadius:3,transition:"width .4s"}}/></div>;
-  const tfield = (props) => <input {...props} style={{background:SURF,border:`1px solid ${BORDER}`,borderRadius:9,padding:"11px 12px",color:TEXT,fontSize:14,outline:"none",fontFamily:"inherit",boxSizing:"border-box",...props.style}}/>;
-
   if (!ready) return <div style={{background:BG,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:RED,fontSize:11,letterSpacing:5,fontWeight:800}}>LOADING</span></div>;
 
   const mColor = (m) => sore[m] ? RED : todayHits.includes(m) ? ORANGE+"AA" : "#34343C";
-  const BodyMap = () => (
-    <svg viewBox="0 0 200 300" style={{width:"100%",maxWidth:200,display:"block",margin:"0 auto"}}>
-      <circle cx="100" cy="24" r="15" fill="#2A2A32"/>
-      <rect x="92" y="37" width="16" height="11" rx="4" fill="#2A2A32"/>
-      <ellipse cx="66" cy="60" rx="17" ry="12" fill={mColor("shoulders")}/>
-      <ellipse cx="134" cy="60" rx="17" ry="12" fill={mColor("shoulders")}/>
-      <path d="M78 54 H122 Q128 54 128 68 Q128 86 100 88 Q72 86 72 68 Q72 54 78 54 Z" fill={mColor("chest")}/>
-      <path d="M82 90 H118 L114 136 Q100 146 86 136 Z" fill={mColor("core")}/>
-      <rect x="48" y="66" width="15" height="40" rx="7" fill={mColor("biceps")}/>
-      <rect x="137" y="66" width="15" height="40" rx="7" fill={mColor("biceps")}/>
-      <rect x="46" y="108" width="13" height="38" rx="6" fill={mColor("forearms")}/>
-      <rect x="141" y="108" width="13" height="38" rx="6" fill={mColor("forearms")}/>
-      <path d="M84 146 Q100 152 116 146 L114 222 H104 L100 160 L96 222 H86 Z" fill={mColor("legs")}/>
-      <rect x="88" y="224" width="9" height="52" rx="4" fill="#2A2A32"/>
-      <rect x="103" y="224" width="9" height="52" rx="4" fill="#2A2A32"/>
-    </svg>
-  );
 
   return (
     <div style={{background:BG,backgroundImage:DIAMOND,minHeight:"100vh",width:"100%",fontFamily:"system-ui,-apple-system,sans-serif",color:TEXT}}>
@@ -362,7 +419,7 @@ export default function App() {
                 <span style={{fontSize:11,color:conflicts.length?RED:GREEN,fontWeight:700}}>{conflicts.length?`⚠ ${conflicts.length} conflict`:soreMuscles.length?`${soreMuscles.length} sore`:"All fresh"}</span>
               </div>
               <div style={{display:"flex",gap:16,alignItems:"center"}}>
-                <div style={{width:88,flexShrink:0}}><BodyMap/></div>
+                <div style={{width:88,flexShrink:0}}><BodyMap mColor={mColor}/></div>
                 <div style={{flex:1}}>
                   <div style={{fontSize:11,color:MUTED,marginBottom:9}}>Tap what's sore today:</div>
                   <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
@@ -477,21 +534,25 @@ export default function App() {
           {tab==="log" && <>
             {plan.type==="rest"
               ? <Card style={{textAlign:"center",padding:"34px 16px"}}><div style={{fontSize:13,color:MUTED,lineHeight:1.6}}>Rest day — no lifting to log. Do rehab and light suburi from the Today tab.</div></Card>
-              : plan.main.map(id=>{
-                  const e=EX[id]; const sets=wlog[id]||[]; const open=openEx===id; const isFl=flags[id];
-                  const coach=coachTarget(id,(exHist[id]||[]).map(h=>({reps:h.reps,wt:h.wt})).concat(sets.map(s=>({reps:s.reps,wt:s.wt}))));
+              : <>
+                {[
+                  ...plan.main.map(id=>({ id, e:EX[id], custom:false })),
+                  ...Object.entries(customEx).map(([id,c])=>({ id, e:{ n:c.name, t:"Custom exercise", mode:"bw" }, custom:true })),
+                ].map(({id,e,custom})=>{
+                  const sets=wlog[id]||[]; const open=openEx===id; const isFl=flags[id];
+                  const coach = custom ? null : coachTarget(id, histFor(id, wlog));
                   return (
                     <div key={id}>
-                      <div onClick={()=>{setOpenEx(open?null:id);setSi({reps:"",wt:""});}} style={{background:CARD,border:`1px solid ${open?tc.c+"80":BORDER}`,borderRadius:open?"14px 14px 0 0":14,padding:"13px 15px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div onClick={()=>openExercise(id)} style={{background:CARD,border:`1px solid ${open?tc.c+"80":BORDER}`,borderRadius:open?"14px 14px 0 0":14,padding:"13px 15px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:14,fontWeight:600}}>{e.n}</span>{isFl&&<span style={{color:RED,fontSize:12}}>⚑</span>}{e.pr&&<Tag label="PR" color={RED}/>}</div>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:14,fontWeight:600}}>{e.n}</span>{isFl&&<span style={{color:RED,fontSize:12}}>⚑</span>}{e.pr&&<Tag label="PR" color={RED}/>}{custom&&<Tag label="CUSTOM" color={MUTED}/>}</div>
                           <div style={{fontSize:10.5,color:MUTED,marginTop:2}}>{e.t}</div>
                         </div>
                         <div style={{textAlign:"right",marginLeft:12}}><div style={{fontSize:21,fontWeight:800,color:sets.length?tc.c:DIM,lineHeight:1}}>{sets.length}</div><div style={{fontSize:9,color:MUTED,letterSpacing:1}}>SETS</div></div>
                       </div>
                       {open && (
                         <div style={{background:SURF,border:`1px solid ${tc.c}80`,borderTop:"none",borderRadius:"0 0 14px 14px",padding:14}}>
-                          <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:12,fontSize:11.5}}><span style={{color:tc.c,fontWeight:800,letterSpacing:.5}}>↗ NEXT TARGET</span><span style={{color:TEXT,fontWeight:600}}>{coach}</span></div>
+                          {coach && <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:12,fontSize:11.5}}><span style={{color:tc.c,fontWeight:800,letterSpacing:.5}}>↗ NEXT TARGET</span><span style={{color:TEXT,fontWeight:600}}>{coach}</span></div>}
                           {sets.map((s,i)=>(
                             <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
                               <span style={{fontSize:10,color:MUTED,fontWeight:700,width:16}}>{i+1}</span>
@@ -501,19 +562,34 @@ export default function App() {
                             </div>
                           ))}
                           <div style={{display:"flex",gap:8,marginTop:sets.length?12:0,marginBottom:10}}>
-                            {tfield({type:"number",placeholder:e.mode==="time"?"Seconds":"Reps",value:si.reps,onChange:e2=>setSi({...si,reps:e2.target.value}),style:{width:96,flexShrink:0}})}
-                            {tfield({placeholder:e.mode==="bw"?"BW / vest":"Weight",value:si.wt,onChange:e2=>setSi({...si,wt:e2.target.value}),style:{flex:1}})}
+                            <div style={{width:96,flexShrink:0}}>{tfield({type:"number",placeholder:e.mode==="time"?"Seconds":"Reps",value:si.reps,onChange:e2=>setSi({...si,reps:e2.target.value})})}</div>
+                            <div style={{flex:1,minWidth:0}}>{tfield({placeholder:e.mode==="bw"?"BW / vest":"Weight",value:si.wt,onChange:e2=>setSi({...si,wt:e2.target.value})})}</div>
                           </div>
                           <div style={{display:"flex",gap:8}}>
                             <button onClick={addSet} style={{flex:1,background:`linear-gradient(100deg,${tc.c}26,${tc.c}14)`,border:`1px solid ${tc.c}55`,borderRadius:9,padding:11,color:tc.c,fontSize:12,fontWeight:800,letterSpacing:.5,cursor:"pointer",fontFamily:"inherit"}}>+ LOG SET</button>
                             <button onClick={()=>saveFlags({...flags,[id]:!isFl})} style={{padding:"11px 14px",background:isFl?RED+"1A":CARD,border:`1px solid ${isFl?RED:BORDER}`,borderRadius:9,color:isFl?RED:MUTED,fontSize:14,cursor:"pointer"}}>⚑</button>
+                            {custom && <button onClick={()=>delCustomEx(id)} style={{padding:"11px 14px",background:CARD,border:`1px solid ${BORDER}`,borderRadius:9,color:MUTED,fontSize:14,cursor:"pointer"}}>🗑</button>}
                           </div>
                         </div>
                       )}
                     </div>
                   );
                 })}
-            {plan.type!=="rest" && <div style={{fontSize:11,color:DIM,textAlign:"center",padding:"4px 0 0"}}>Flag (⚑) anything that felt off — pain, bad form, too easy.</div>}
+                <div style={{fontSize:11,color:DIM,textAlign:"center",padding:"4px 0 0"}}>Flag (⚑) anything that felt off — pain, bad form, too easy.</div>
+
+                {showAddEx ? (
+                  <Card>
+                    <Eyebrow>Add Custom Exercise</Eyebrow>
+                    <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:10}}>
+                      {tfield({placeholder:"Exercise name", value:newExName, onChange:e=>setNewExName(e.target.value), autoFocus:true})}
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={addCustomEx} style={{flex:1,background:`linear-gradient(100deg,${tc.c}26,${tc.c}14)`,border:`1px solid ${tc.c}55`,borderRadius:9,padding:11,color:tc.c,fontSize:12,fontWeight:800,letterSpacing:.5,cursor:"pointer",fontFamily:"inherit"}}>ADD</button>
+                        <button onClick={()=>{setShowAddEx(false);setNewExName("");}} style={{flex:1,background:SURF,border:`1px solid ${BORDER}`,borderRadius:9,padding:11,color:MUTED,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>CANCEL</button>
+                      </div>
+                    </div>
+                  </Card>
+                ) : <button onClick={()=>setShowAddEx(true)} style={{width:"100%",boxSizing:"border-box",background:`linear-gradient(100deg,${tc.c}26,${tc.c}14)`,border:`1px solid ${tc.c}55`,borderRadius:14,padding:14,color:tc.c,fontSize:13,fontWeight:800,letterSpacing:1,cursor:"pointer",fontFamily:"inherit"}}>+ ADD CUSTOM EXERCISE</button>}
+                </>}
           </>}
 
           {/* ───── STATS ───── */}
@@ -614,7 +690,9 @@ export default function App() {
                 <Eyebrow>Add Food</Eyebrow>
                 <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:10}}>
                   {tfield({placeholder:"Food name",value:fi.name,onChange:e=>setFi({...fi,name:e.target.value})})}
-                  <div style={{display:"flex",gap:6}}>{[["kcal","Cal"],["pro","P"],["fat","F"],["carb","C"]].map(([k,p])=>tfield({key:k,type:"number",placeholder:p,value:fi[k],onChange:e=>setFi({...fi,[k]:e.target.value}),style:{flex:1,minWidth:0,textAlign:"center",padding:"11px 4px"}}))}</div>
+                  <div style={{display:"flex",gap:6}}>{[["kcal","Cal"],["pro","P"],["fat","F"],["carb","C"]].map(([k,p])=>(
+                    <div key={k} style={{flex:1,minWidth:0}}>{tfield({type:"number",placeholder:p,value:fi[k],onChange:e=>setFi({...fi,[k]:e.target.value}),style:{textAlign:"center",padding:"11px 4px"}})}</div>
+                  ))}</div>
                   <div style={{display:"flex",gap:8}}>
                     <button onClick={addFood} style={{flex:1,background:RED+"1A",border:`1px solid ${RED}55`,borderRadius:9,padding:11,color:RED,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>ADD</button>
                     <button onClick={()=>setShowFood(false)} style={{flex:1,background:SURF,border:`1px solid ${BORDER}`,borderRadius:9,padding:11,color:MUTED,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>CANCEL</button>
