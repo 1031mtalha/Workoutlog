@@ -146,7 +146,13 @@ const QURAN = [
 ];
 
 /* ─────────────────────────  HELPERS  ───────────────────────── */
-const todayKey = () => new Date().toISOString().split("T")[0];
+const todayKey = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+};
 const dayOfYear = () => { const n=new Date(); const s=new Date(n.getFullYear(),0,0); return Math.floor((n-s)/86400000); };
 const fmt = (k) => new Date(k+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"});
 const fmtW = (k) => new Date(k+"T12:00:00").toLocaleDateString("en-US",{weekday:"short"});
@@ -195,6 +201,20 @@ function coachTarget(exId, hist) {
   if (reps>=e.hi) return `Add weight, drop to ${e.lo} reps`;
   return `${last.wt} × ${reps+1} reps`;
 }
+
+/* ─────────────────────────  SHARED UI  ─────────────────────────
+   Defined at module scope (not inside App) so they keep a stable
+   identity across renders. Defining these inside a component body
+   recreates them on every render, which makes React treat them as
+   new component types and remount their children — e.g. an <input>
+   nested inside would lose focus (and the on-screen keyboard would
+   close) after every keystroke.                                     */
+const Card = ({children,style}) => <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,padding:16,...style}}>{children}</div>;
+const Eyebrow = ({children}) => <div style={{fontSize:10,letterSpacing:2,color:MUTED,textTransform:"uppercase",fontWeight:700}}>{children}</div>;
+const Tag = ({label,color}) => <span style={{fontSize:9,fontWeight:800,letterSpacing:1.5,color,background:color+"22",padding:"4px 9px",borderRadius:5}}>{label}</span>;
+const pct = (v,m)=>`${Math.min(100,Math.round((v/m)*100))}%`;
+const Bar = ({v,m,c}) => <div style={{height:4,background:BORDER,borderRadius:3,overflow:"hidden",marginTop:5}}><div style={{width:pct(v,m),height:"100%",background:c,borderRadius:3,transition:"width .4s"}}/></div>;
+const tfield = (props) => <input {...props} style={{background:SURF,border:`1px solid ${BORDER}`,borderRadius:9,padding:"11px 12px",color:TEXT,fontSize:14,outline:"none",fontFamily:"inherit",boxSizing:"border-box",...props.style}}/>;
 
 /* ─────────────────────────  COMPONENT  ───────────────────────── */
 export default function App() {
@@ -299,13 +319,6 @@ export default function App() {
   const conflicts = todayHits.filter(m=>sore[m]);
   const rehabDone = REHAB.filter(r=>rhab[r.id]).length;
   const loggedCount = plan.main.filter(id=>(wlog[id]||[]).length>0).length;
-
-  const Card = ({children,style}) => <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,padding:16,...style}}>{children}</div>;
-  const Eyebrow = ({children}) => <div style={{fontSize:10,letterSpacing:2,color:MUTED,textTransform:"uppercase",fontWeight:700}}>{children}</div>;
-  const Tag = ({label,color}) => <span style={{fontSize:9,fontWeight:800,letterSpacing:1.5,color,background:color+"22",padding:"4px 9px",borderRadius:5}}>{label}</span>;
-  const pct = (v,m)=>`${Math.min(100,Math.round((v/m)*100))}%`;
-  const Bar = ({v,m,c}) => <div style={{height:4,background:BORDER,borderRadius:3,overflow:"hidden",marginTop:5}}><div style={{width:pct(v,m),height:"100%",background:c,borderRadius:3,transition:"width .4s"}}/></div>;
-  const tfield = (props) => <input {...props} style={{background:SURF,border:`1px solid ${BORDER}`,borderRadius:9,padding:"11px 12px",color:TEXT,fontSize:14,outline:"none",fontFamily:"inherit",boxSizing:"border-box",...props.style}}/>;
 
   if (!ready) return <div style={{background:BG,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:RED,fontSize:11,letterSpacing:5,fontWeight:800}}>LOADING</span></div>;
 
