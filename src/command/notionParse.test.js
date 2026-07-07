@@ -63,6 +63,6 @@ test("project page parser reads exact live field names", () => {
     assert.ok(field in page.properties, `mock carries live field "${field}"`);
   }
   const parsed = parseProjectPage(page);
-  assert.equal(parsed.status.color, "blue");
+  assert.equal(parsed.status.color, "yellow", "In progress is yellow in the live database");
   assert.ok(parsed.dates.start && parsed.dates.end, "Dates is a range");
 });

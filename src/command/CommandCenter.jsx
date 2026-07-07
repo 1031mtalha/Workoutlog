@@ -21,9 +21,10 @@ const NOTION_COLOR = {
   yellow: "#E3B341", green: "#3FB950", red: "#F85149", orange: "#F0883E",
   pink: "#DB61A2", brown: "#B08968",
 };
+/* Live "Command Center — Projects" status colors, verified 2026-07-07. */
 const STATUS_COLOR_NAME = {
-  Backlog: "default", Planning: "purple", "In progress": "blue",
-  Paused: "yellow", Done: "green", Cancelled: "red",
+  Backlog: "default", Planning: "blue", "In progress": "yellow",
+  Paused: "purple", Done: "green", Cancelled: "red",
 };
 const statusHex = (status) => NOTION_COLOR[status?.color] ?? NOTION_COLOR.default;
 

@@ -73,7 +73,7 @@ export const mockProjectsResponse = {
   results: [
     projectPage("proj-veloure-0001", {
       "Project name": title("VELOURE — Fragrance Launch"),
-      "Status": status("In progress", "blue"),
+      "Status": status("In progress", "yellow"),
       "Next Action": richText("Lock accord ratios for batch 03 sampling"),
       "Owner": people(),
       "Dates": dateRange(daysAgo(58), daysAhead(56)),
@@ -82,7 +82,7 @@ export const mockProjectsResponse = {
     }),
     projectPage("proj-leafrig-0002", {
       "Project name": title("Leaf Fluorescence Rig — Plant Research"),
-      "Status": status("In progress", "blue"),
+      "Status": status("In progress", "yellow"),
       "Next Action": richText("Calibrate PAM sensor against reference chlorophyll standards"),
       "Owner": people(),
       "Dates": dateRange(daysAgo(97), daysAhead(100)),
@@ -91,7 +91,7 @@ export const mockProjectsResponse = {
     }),
     projectPage("proj-clinic-0003", {
       "Project name": title("Health Clinic Website"),
-      "Status": status("Planning", "purple"),
+      "Status": status("Planning", "blue"),
       "Next Action": richText("Send sitemap + wireframe draft for clinic approval"),
       "Owner": people(),
       "Dates": dateRange(daysAgo(6), daysAhead(54)),
@@ -109,7 +109,7 @@ export const mockProjectsResponse = {
     }),
     projectPage("proj-hospital-0005", {
       "Project name": title("City Hospital — Volunteering Track"),
-      "Status": status("Paused", "yellow"),
+      "Status": status("Paused", "purple"),
       "Next Action": richText("Re-confirm fall shift schedule with volunteer coordinator"),
       "Owner": people(),
       "Dates": dateRange(daysAgo(156), daysAhead(166)),
