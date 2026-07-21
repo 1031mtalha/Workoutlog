@@ -24,55 +24,65 @@ export const TTYPE = {
   rest: { c: DIM,    label: "REST"  },
 };
 
-/* ─────────────────────────  EXERCISE POOL (defaults)  ───────────────────────── */
+/* ─────────────────────────  EXERCISE POOL (defaults)  ─────────────────────────
+   mode legend:
+     "bw"     — bodyweight, pure rep progression, no load axis
+     "load"   — bodyweight or external load, progression is load-aware (add
+                weight once rep ceiling is hit at the current load)
+     "time"   — hold/duration, beat previous time
+     "assist" — negative/assisted reps tracked separately from full-strength
+                reps (see repType on logged sets) — for movements you're
+                still building toward, not yet a clean rep-max lift        */
 export const EX_DEFAULTS = {
   // PULL
-  full_pu:   { n:"Pull-ups (or negatives)", mode:"bw",   lo:3,  hi:8,  t:"3 sets · 5s descent if negatives" },
+  full_pu:   { n:"Pull-ups",                mode:"assist", lo:4,  hi:7,  t:"3-4 sets negatives · lo/hi = descent seconds · weekly full-rep test" },
   inv_row:   { n:"Inverted Rows",           mode:"bw",   lo:10, hi:15, t:"3 sets · feet elevated to progress" },
-  sa_row:    { n:"Single-Arm DB Row",       mode:"load", lo:8,  hi:12, t:"3 sets each arm · stack to 30lb" },
+  sa_row:    { n:"Single-Arm DB Row",       mode:"load", lo:8,  hi:12, t:"2-3 sets each arm · stack to 30lb" },
   cs_row:    { n:"Chest-Supported Row",     mode:"load", lo:10, hi:12, t:"3 sets · chest on bench" },
-  rev_fly:   { n:"Reverse Flys",            mode:"load", lo:12, hi:15, t:"3 sets · strict, rear delt only" },
+  rev_fly:   { n:"Reverse Flys",            mode:"load", lo:12, hi:15, t:"2 sets · strict, rear delt only" },
   hammer:    { n:"Hammer Curls",            mode:"load", lo:10, hi:12, t:"2 sets · 15lb" },
-  pu_max:    { n:"Pull-up Max Test",        mode:"bw",   lo:1,  hi:20, t:"3 sets to near-failure · PR", pr:true },
+  alt_curl:  { n:"Alternating Curls",       mode:"load", lo:10, hi:12, t:"2 sets · alternate hammer/regular each rep · 15lb" },
+  pu_max:    { n:"Pull-up Max Test",        mode:"bw",   lo:1,  hi:20, t:"legacy — folded into Pull-ups (assist) weekly test", pr:true },
   sup_row:   { n:"Supinated Row",           mode:"load", lo:10, hi:12, t:"3 sets · underhand grip" },
   reg_curl:  { n:"Regular Curls",           mode:"load", lo:10, hi:12, t:"3 sets · 15lb" },
   conc_curl: { n:"Concentration Curls",     mode:"load", lo:8,  hi:10, t:"2 sets each · 15lb" },
   dead_hang: { n:"Dead Hang",               mode:"time", lo:20, hi:60, t:"2 sets · max time · PR", pr:true },
   // PUSH
-  exp_pu:    { n:"Explosive Push-ups",      mode:"bw",   lo:3,  hi:5,  t:"4 sets · fast up, 3s down" },
-  pike_pu:   { n:"Pike Push-ups",           mode:"bw",   lo:8,  hi:12, t:"3 sets · hips high" },
-  dips:      { n:"Dips (Bullbar)",          mode:"bw",   lo:5,  hi:8,  t:"4 sets · bench dips if needed" },
+  exp_pu:    { n:"Explosive Push-ups",      mode:"bw",   lo:3,  hi:5,  t:"2 sets · fast up, 3s down · power primer, kept brief on purpose" },
+  pike_pu:   { n:"Pike Push-ups",           mode:"bw",   lo:8,  hi:12, t:"2 sets · hips high · overhead pressing progression" },
+  dips:      { n:"Dips (Bullbar)",          mode:"load", lo:5,  hi:8,  t:"4 sets · money lift · weighted from the start, add load at ceiling" },
+  pushup:    { n:"Push-ups",                mode:"bw",   lo:15, hi:20, t:"3 sets · money lift, rep-focused · hard stop the moment hips sag, don't grind past it" },
   oh_tri:    { n:"Overhead Tricep Ext.",    mode:"load", lo:10, hi:12, t:"3 sets · 15lb · elbows in" },
-  lat_raise: { n:"Lateral Raises",          mode:"load", lo:12, hi:15, t:"3 sets · 15lb · controlled down" },
-  vest_pu:   { n:"Weighted Push-ups",       mode:"bw",   lo:5,  hi:8,  t:"4 sets · 12lb vest" },
+  lat_raise: { n:"Lateral Raises",          mode:"load", lo:12, hi:15, t:"2 sets · 15lb · controlled down" },
+  vest_pu:   { n:"Weighted Push-ups",       mode:"load", lo:5,  hi:8,  t:"legacy — folded into Dips as the loaded-pressing money lift" },
   dec_pu:    { n:"Decline Push-ups",        mode:"bw",   lo:10, hi:15, t:"3 sets · feet on bench" },
-  skull:     { n:"Skull Crushers",          mode:"load", lo:8,  hi:12, t:"3 sets · 15lb · elbows fixed" },
+  skull:     { n:"Skull Crushers",          mode:"load", lo:8,  hi:12, t:"2-3 sets · 15lb · elbows fixed, monitor — one-off pain isn't a pattern, a repeat is" },
   arnold:    { n:"Arnold Press",            mode:"load", lo:8,  hi:10, t:"3 sets · 15lb · full rotation" },
-  // LEGS (no-impact, shin-safe — Phase 1)
-  goblet:    { n:"Goblet / Vest Squats",    mode:"load", lo:6,  hi:10, t:"4 sets · 15lb or 12lb vest" },
-  bss:       { n:"Bulgarian Split Squat",   mode:"load", lo:8,  hi:12, t:"3 sets each leg · skip if shin-painful" },
-  glute_br:  { n:"Glute Bridges",           mode:"bw",   lo:10, hi:15, t:"3 sets · squeeze at top" },
-  calf:      { n:"Wedge Calf + Tibialis",   mode:"bw",   lo:12, hi:20, t:"3 sets · pain-free range only" },
+  // LEGS (no-impact, shin-safe — Phase 1, rehab-forward per current MTSS status)
+  goblet:    { n:"Goblet / Vest Squats",    mode:"load", lo:6,  hi:10, t:"3 sets · 15lb or 12lb vest · no impact" },
+  bss:       { n:"Bulgarian Split Squat",   mode:"load", lo:8,  hi:12, t:"2 sets each leg · skip if shin-painful" },
+  glute_br:  { n:"Glute Bridges",           mode:"bw",   lo:10, hi:15, t:"2 sets · squeeze at top" },
+  calf:      { n:"Wedge Calf + Tibialis",   mode:"bw",   lo:12, hi:20, t:"legacy — already covered by daily rehab, dropped as duplicate" },
   leg_ext:   { n:"Leg Extensions",          mode:"load", lo:10, hi:15, t:"3 sets · bench machine" },
   step_up:   { n:"Step-ups (controlled)",   mode:"load", lo:10, hi:12, t:"3 sets each · no jumping" },
   // POWER (explosive — render first in session, shin-safe)
   clap_pu:     { n:"Plyo / Clap Push-ups",       mode:"bw",   lo:5, hi:10, t:"4 sets · max power per rep" },
   db_throw:    { n:"DB Explosive Press",         mode:"load", lo:6, hi:10, t:"3 sets · accelerate hard" },
-  db_rot_throw:{ n:"DB / Med-Ball Rotational Throw", mode:"bw", lo:5, hi:8, t:"3-4 sets each side · max speed" },
-  // CORE
-  plank:     { n:"Plank",                   mode:"time", lo:45, hi:90, t:"3 sets · no sag" },
-  hollow:    { n:"Hollow Body Hold",        mode:"time", lo:20, hi:45, t:"3 sets · lower back down" },
-  dead_bug:  { n:"Dead Bug",                mode:"bw",   lo:8,  hi:12, t:"3 sets each side" },
+  db_rot_throw:{ n:"DB / Med-Ball Rotational Throw", mode:"bw", lo:5, hi:8, t:"2 sets each side · max speed · rotational power" },
+  // CORE — Plank and Hollow are the anti-extension pair that directly limits the Push-ups money lift when it breaks down
+  plank:     { n:"Plank",                   mode:"time", lo:45, hi:90, t:"2 sets · no sag — this is what's actually limiting your push-up reps" },
+  hollow:    { n:"Hollow Body Hold",        mode:"time", lo:20, hi:45, t:"2 sets · lower back down" },
+  dead_bug:  { n:"Dead Bug",                mode:"bw",   lo:8,  hi:12, t:"legacy — redundant with Plank/Hollow, dropped from default cycle" },
   bicycle:   { n:"Bicycle Crunches",        mode:"bw",   lo:15, hi:25, t:"3 sets · controlled" },
   leg_raise: { n:"Hanging Leg Raises",      mode:"bw",   lo:8,  hi:15, t:"3 sets · no swing" },
-  pallof:    { n:"Pallof Press",            mode:"load", lo:10, hi:15, t:"3 sets each side · resist rotation" },
+  pallof:    { n:"Pallof Press",            mode:"load", lo:10, hi:15, t:"legacy — needs a band/cable you don't have, replaced by DB Rotational Throw" },
 };
 
 export const HITS_DEFAULTS = {
   full_pu:["back","biceps"], inv_row:["back","biceps"], sa_row:["back","biceps"], cs_row:["back","biceps"],
-  rev_fly:["shoulders"], hammer:["biceps"], pu_max:["back","biceps"], sup_row:["back","biceps"],
+  rev_fly:["shoulders"], hammer:["biceps"], alt_curl:["biceps"], pu_max:["back","biceps"], sup_row:["back","biceps"],
   reg_curl:["biceps"], conc_curl:["biceps"], dead_hang:["forearms"],
-  exp_pu:["chest","triceps","shoulders"], pike_pu:["shoulders","triceps"], dips:["chest","triceps"],
+  exp_pu:["chest","triceps","shoulders"], pike_pu:["shoulders","triceps"], dips:["chest","triceps"], pushup:["chest","triceps","shoulders"],
   oh_tri:["triceps"], lat_raise:["shoulders"], vest_pu:["chest","triceps"], dec_pu:["chest","triceps"],
   skull:["triceps"], arnold:["shoulders","triceps"],
   goblet:["legs"], bss:["legs"], glute_br:["legs"], calf:["legs"], leg_ext:["legs"], step_up:["legs"],
@@ -84,26 +94,21 @@ export const HITS_DEFAULTS = {
 /* ── Rolling cycle (replaces weekday-indexed WEEK) ──────────────────
    Each slot is a day-template. "Today's workout" = cycle[anchor.index],
    advanced by completing or explicitly shifting — never by calendar weekday. */
+/* Locked PPL+Rest split, push before pull (stabilizers give out in pull
+   before push does). Single template per day, no A/B duplication — Dips
+   and Push-ups now carry genuinely different progression axes (load vs.
+   reps) instead of both being "loaded pressing" done twice. */
 export const CYCLE_PHASE1 = [
-  { id:"pullA", name:"Pull A", type:"pull",
-    main:["full_pu","inv_row","sa_row","cs_row","rev_fly","hammer","dead_hang"],
-    addons:["rehab","suburi"] },
-  { id:"pushA", name:"Push A", type:"push",
-    main:["exp_pu","pike_pu","dips","skull","lat_raise"],
+  { id:"push1", name:"Push", type:"push",
+    main:["exp_pu","dips","pushup","pike_pu","lat_raise","skull"],
     addons:["rehab","bikehiit"] },
-  { id:"legsCore", name:"Legs + Core", type:"legs",
-    main:["goblet","bss","glute_br","calf","leg_ext","plank","hollow","dead_bug"],
+  { id:"pull1", name:"Pull", type:"pull",
+    main:["full_pu","sa_row","rev_fly","alt_curl","db_rot_throw","dead_hang"],
+    addons:["rehab","suburi"] },
+  { id:"legs1", name:"Legs", type:"legs",
+    main:["goblet","bss","glute_br","plank","hollow"],
     addons:["rehab"] },
   { id:"rest1", name:"Rest", type:"rest", main:[], addons:["rehab","suburi_light"] },
-  { id:"pullB", name:"Pull B", type:"pull",
-    main:["pu_max","sup_row","sa_row","rev_fly","reg_curl","conc_curl","dead_hang"],
-    addons:["rehab","suburi"] },
-  { id:"pushB", name:"Push B", type:"push",
-    main:["vest_pu","dec_pu","dips","skull","arnold"],
-    addons:["rehab","bikehiit"] },
-  { id:"power", name:"Power + Legs", type:"power",
-    main:["clap_pu","db_throw","bss","step_up","glute_br","hollow","leg_raise"],
-    addons:["rehab"] },
 ];
 
 /* Phase 2 stays the Phase 1 cycle plus a manually-inserted plyo track —

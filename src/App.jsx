@@ -8,7 +8,13 @@ import { sg, ss, slist, setStorageErrorHandler, testStorage, exportAll, importAl
 import { TodayTab, WeekTab, LogTab, StatsTab, FuelTab, TrackTab, SettingsTab } from "./tabs";
 
 /* ─────────────────────────  HELPERS  ───────────────────────── */
-const todayKey = () => new Date().toISOString().split("T")[0];
+const todayKey = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
 const dayOfYear = (k) => { const d = new Date(k + "T12:00:00"); const s = new Date(d.getFullYear(), 0, 0); return Math.floor((d - s) / 86400000); };
 const fmt = (k) => new Date(k + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const fmtW = (k) => new Date(k + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" });
@@ -28,14 +34,56 @@ const est1RM = (reps, wt) => { const w = parseFloat(wt) || 0; const r = parseFlo
 
 function coachTarget(e, hist) {
   if (!e) return null;
-  if (!hist.length) return e.mode === "time" ? `Start at ${e.lo}s` : `Start at ${e.lo} reps`;
+  if (!hist.length) {
+    if (e.mode === "time") return `Start at ${e.lo}s`;
+    if (e.mode === "assist") return `Start negatives: ${e.lo}s descent, 3 reps`;
+    return `Start at ${e.lo} reps`;
+  }
   const last = hist[hist.length - 1];
   const reps = parseFloat(last.reps) || 0;
-  if (e.mode === "time") { const t = parseFloat(last.reps) || 0; return `Beat ${t}s`; }
-  if (e.mode === "bw") { if (reps >= e.hi) return `${reps + 1} reps — push the ceiling`; return `${reps + 1} reps (was ${reps})`; }
-  if (reps >= e.hi) return `Add weight, drop to ${e.lo} reps`;
-  return `${last.wt} × ${reps + 1} reps`;
+
+  if (e.mode === "time") return `Beat ${reps}s`;
+
+  /* assisted/negative-rep tracking (pull-ups): negatives are the daily driver,
+     full strict reps are a separate, lower-frequency PR test — never blended
+     into one number, or a 5-rep negative set reads as equal to 5 real reps. */
+  if (e.mode === "assist") {
+    const fulls = hist.filter(h => h.repType === "full");
+    const negs = hist.filter(h => h.repType !== "full");
+    const bestFull = fulls.reduce((m, h) => Math.max(m, parseFloat(h.reps) || 0), 0);
+    const lastNeg = negs[negs.length - 1];
+    const prNote = bestFull ? ` · best full reps: ${bestFull}` : "";
+    if (!lastNeg) return `Start negatives: ${e.lo}s descent, 3 reps${prNote}`;
+    const tempo = parseFloat(lastNeg.tempo) || e.lo;
+    const negReps = parseFloat(lastNeg.reps) || 0;
+    if (negReps >= (e.hi || 5)) return `${tempo + 1}s descent, reset to ${e.lo} reps${prNote}`;
+    return `${negReps + 1} negative reps at ${tempo}s descent${prNote}`;
+  }
+
+  if (e.mode === "bw") {
+    if (reps >= e.hi) return `${reps + 1} reps — push the ceiling`;
+    return `${reps + 1} reps (was ${reps})`;
+  }
+
+  /* mode === "load": this branch already read last.wt correctly. The bug was
+     never here, it was that Dips was classified "bw" and never reached this
+     branch at all. Fixing the classification in data.js is what actually
+     matters; this logic just needed to be reachable. */
+  if (reps >= e.hi) return `Add load, drop to ${e.lo} reps`;
+  return `${last.wt || "BW"} × ${reps + 1} reps`;
 }
+
+/* Defined at module scope, not inside App(), so they keep a stable identity
+   across renders. Defining these inside the component body recreates them
+   every render, which makes React treat them as new component types and
+   remount their children — e.g. an <input> nested inside loses focus (and
+   the on-screen keyboard closes) after every keystroke. */
+const Card = ({ children, style }) => <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 16, ...style }}>{children}</div>;
+const Eyebrow = ({ children }) => <div style={{ fontSize: 10, letterSpacing: 2, color: MUTED, textTransform: "uppercase", fontWeight: 700 }}>{children}</div>;
+const Tag = ({ label, color }) => <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.5, color, background: color + "22", padding: "4px 9px", borderRadius: 5 }}>{label}</span>;
+const pct = (v, m) => `${Math.min(100, Math.round((v / m) * 100))}%`;
+const Bar = ({ v, m, c }) => <div style={{ height: 4, background: BORDER, borderRadius: 3, overflow: "hidden", marginTop: 5 }}><div style={{ width: pct(v, m), height: "100%", background: c, borderRadius: 3, transition: "width .4s" }} /></div>;
+const tfield = (props) => <input {...props} style={{ background: SURF, border: `1px solid ${BORDER}`, borderRadius: 9, padding: "11px 12px", color: TEXT, fontSize: 14, outline: "none", fontFamily: "inherit", boxSizing: "border-box", ...props.style }} />;
 
 /* default localStorage keys this build introduces — pre-existing
    wl_/fd_/sl_/rh_/so_/ad_/fg_/prs_v3 keys are read as-is, no migration needed */
@@ -106,7 +154,7 @@ export default function App() {
   const [monthCells, setMonthCells] = useState({});
 
   const [openEx, setOpenEx] = useState(null);
-  const [si, setSi] = useState({ reps: "", wt: "" });
+  const [si, setSi] = useState({ reps: "", wt: "", tempo: "", repType: "negative" });
   const [showFood, setShowFood] = useState(false);
   const [fi, setFi] = useState({ name: "", kcal: "", pro: "", fat: "", carb: "", save: false });
   const [prEdit, setPrEdit] = useState(null);
@@ -185,10 +233,15 @@ export default function App() {
     }
     setHist(rows); setExHist(exMap);
     const exs = Object.keys(exMap);
-    if (exs.length && !chartEx) setChartEx(exs.includes("pu_max") ? "pu_max" : exs[0]);
+    if (exs.length && !chartEx) setChartEx(exs.includes("full_pu") ? "full_pu" : exs[0]);
   }, [chartEx]);
 
-  useEffect(() => { if (tab === "stats" && ready) loadHistory(); }, [tab, ready, loadHistory]);
+  /* Was gated on tab==="stats", meaning exHist stayed {} until you'd opened
+     Stats at least once that session — so coachTarget on the Log tab always
+     saw empty history and defaulted to the base "Start at X reps" target,
+     even after weeks of logged sets. Load as soon as the app is ready,
+     regardless of which tab you're on. */
+  useEffect(() => { if (ready) loadHistory(); }, [ready, loadHistory]);
 
   /* monthly tracker grid: load all wl_/st_ keys for current month */
   const loadMonth = useCallback(async (monthKey) => {
@@ -237,8 +290,14 @@ export default function App() {
 
   const addSet = async () => {
     if (!si.reps || !openEx) return;
-    await saveWlog({ ...wlog, [openEx]: [...(wlog[openEx] || []), { reps: si.reps, wt: si.wt || "BW" }] });
-    setSi({ reps: "", wt: "" }); flash("Set logged");
+    const def = EX[openEx];
+    const entry = { reps: si.reps, wt: parseFloat(si.wt) || 0 };
+    if (def?.mode === "assist") {
+      entry.repType = si.repType === "full" ? "full" : "negative";
+      if (entry.repType === "negative") entry.tempo = parseFloat(si.tempo) || def.lo || 3;
+    }
+    await saveWlog({ ...wlog, [openEx]: [...(wlog[openEx] || []), entry] });
+    setSi({ reps: "", wt: "", tempo: "", repType: "negative" }); flash("Set logged");
   };
   const delSet = async (exId, i) => { const arr = [...(wlog[exId] || [])]; arr.splice(i, 1); await saveWlog({ ...wlog, [exId]: arr }); };
 
@@ -303,12 +362,6 @@ export default function App() {
   const rehabDone = REHAB.filter(r => rhab[r.id]).length;
   const loggedCount = plan.main.filter(id => (wlog[id] || []).length > 0).length;
 
-  const Card = ({ children, style }) => <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 16, ...style }}>{children}</div>;
-  const Eyebrow = ({ children }) => <div style={{ fontSize: 10, letterSpacing: 2, color: MUTED, textTransform: "uppercase", fontWeight: 700 }}>{children}</div>;
-  const Tag = ({ label, color }) => <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.5, color, background: color + "22", padding: "4px 9px", borderRadius: 5 }}>{label}</span>;
-  const pct = (v, m) => `${Math.min(100, Math.round((v / m) * 100))}%`;
-  const Bar = ({ v, m, c }) => <div style={{ height: 4, background: BORDER, borderRadius: 3, overflow: "hidden", marginTop: 5 }}><div style={{ width: pct(v, m), height: "100%", background: c, borderRadius: 3, transition: "width .4s" }} /></div>;
-  const tfield = (props) => <input {...props} style={{ background: SURF, border: `1px solid ${BORDER}`, borderRadius: 9, padding: "11px 12px", color: TEXT, fontSize: 14, outline: "none", fontFamily: "inherit", boxSizing: "border-box", ...props.style }} />;
 
   if (!ready) return <div style={{ background: BG, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: RED, fontSize: 11, letterSpacing: 5, fontWeight: 800 }}>LOADING</span></div>;
 

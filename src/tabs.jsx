@@ -189,10 +189,10 @@ export function LogTab({ DateNav, plan, EX, HITS, wlog, openEx, setOpenEx, si, s
       : plan.main.map(id => {
         const e = EX[id]; if (!e) return null;
         const sets = wlog[id] || []; const open = openEx === id; const isFl = flags[id];
-        const coach = coachTarget(e, (exHist[id] || []).map(h => ({ reps: h.reps, wt: h.wt })).concat(sets.map(s => ({ reps: s.reps, wt: s.wt }))));
+        const coach = coachTarget(e, (exHist[id] || []).map(h => ({ reps: h.reps, wt: h.wt, repType: h.repType, tempo: h.tempo })).concat(sets.map(s => ({ reps: s.reps, wt: s.wt, repType: s.repType, tempo: s.tempo }))));
         return (
           <div key={id}>
-            <div onClick={() => { setOpenEx(open ? null : id); setSi({ reps: "", wt: "" }); }} style={{ background: CARD, border: `1px solid ${open ? tc.c + "80" : BORDER}`, borderRadius: open ? "14px 14px 0 0" : 14, padding: "13px 15px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div onClick={() => { setOpenEx(open ? null : id); setSi({ reps: "", wt: "", tempo: "", repType: "negative" }); }} style={{ background: CARD, border: `1px solid ${open ? tc.c + "80" : BORDER}`, borderRadius: open ? "14px 14px 0 0" : 14, padding: "13px 15px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 14, fontWeight: 600 }}>{e.n}</span>{isFl && <span style={{ color: RED, fontSize: 12 }}>⚑</span>}{e.pr && <Tag label="PR" color={RED} />}</div>
                 <div style={{ fontSize: 10.5, color: MUTED, marginTop: 2 }}>{e.t}</div>
@@ -206,13 +206,23 @@ export function LogTab({ DateNav, plan, EX, HITS, wlog, openEx, setOpenEx, si, s
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                     <span style={{ fontSize: 10, color: MUTED, fontWeight: 700, width: 16 }}>{i + 1}</span>
                     <span style={{ fontSize: 16, fontWeight: 800, color: tc.c }}>{s.reps}</span>
-                    <span style={{ fontSize: 11.5, color: MUTED }}>{e.mode === "time" ? "sec" : "reps"} · {s.wt}</span>
+                    {e.mode === "assist"
+                      ? <span style={{ fontSize: 11.5, color: MUTED }}>{s.repType === "full" ? "full reps" : `negative · ${s.tempo || "?"}s descent`}</span>
+                      : <span style={{ fontSize: 11.5, color: MUTED }}>{e.mode === "time" ? "sec" : "reps"} · {e.mode === "bw" ? (s.wt > 0 ? `+${s.wt}` : "BW") : s.wt}</span>}
                     <span onClick={() => delSet(id, i)} style={{ marginLeft: "auto", fontSize: 11, color: DIM, cursor: "pointer" }}>remove</span>
                   </div>
                 ))}
-                <div style={{ display: "flex", gap: 8, marginTop: sets.length ? 12 : 0, marginBottom: 10 }}>
+                {e.mode === "assist" && (
+                  <div style={{ display: "flex", gap: 6, marginTop: sets.length ? 12 : 0, marginBottom: 8 }}>
+                    <button onClick={() => setSi({ ...si, repType: "negative" })} style={{ flex: 1, padding: "8px 10px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${si.repType !== "full" ? tc.c : BORDER}`, background: si.repType !== "full" ? tc.c + "22" : SURF, color: si.repType !== "full" ? tc.c : MUTED }}>Negative</button>
+                    <button onClick={() => setSi({ ...si, repType: "full" })} style={{ flex: 1, padding: "8px 10px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${si.repType === "full" ? RED : BORDER}`, background: si.repType === "full" ? RED + "22" : SURF, color: si.repType === "full" ? RED : MUTED }}>Full rep (PR test)</button>
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8, marginTop: e.mode === "assist" ? 0 : (sets.length ? 12 : 0), marginBottom: 10 }}>
                   {tfield({ type: "number", placeholder: e.mode === "time" ? "Seconds" : "Reps", value: si.reps, onChange: e2 => setSi({ ...si, reps: e2.target.value }), style: { width: 96, flexShrink: 0 } })}
-                  {tfield({ placeholder: e.mode === "bw" ? "BW / vest" : "Weight", value: si.wt, onChange: e2 => setSi({ ...si, wt: e2.target.value }), style: { flex: 1 } })}
+                  {e.mode === "assist" && si.repType !== "full"
+                    ? tfield({ type: "number", placeholder: "Descent secs", value: si.tempo, onChange: e2 => setSi({ ...si, tempo: e2.target.value }), style: { flex: 1 } })
+                    : e.mode !== "assist" && tfield({ placeholder: e.mode === "bw" ? "BW / vest" : "Weight", value: si.wt, onChange: e2 => setSi({ ...si, wt: e2.target.value }), style: { flex: 1 } })}
                 </div>
                 <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                   <button onClick={addSet} style={{ flex: 1, background: `linear-gradient(100deg,${tc.c}26,${tc.c}14)`, border: `1px solid ${tc.c}55`, borderRadius: 9, padding: 11, color: tc.c, fontSize: 12, fontWeight: 800, letterSpacing: .5, cursor: "pointer", fontFamily: "inherit" }}>+ LOG SET</button>
